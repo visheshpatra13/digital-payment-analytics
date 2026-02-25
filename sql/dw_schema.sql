@@ -1,0 +1,94 @@
+-- Digital Payment Analytics - Core DW Schema (Star)
+
+CREATE OR REPLACE DATABASE PAYMENTS_DWH;
+CREATE OR REPLACE SCHEMA PAYMENTS_DWH.CORE;
+
+USE DATABASE PAYMENTS_DWH;
+USE SCHEMA CORE;
+
+-- Dimensions
+
+CREATE OR REPLACE TABLE DIM_CUSTOMER (
+    CUSTOMER_KEY        NUMBER      AUTOINCREMENT,
+    CUSTOMER_ID         VARCHAR     NOT NULL,
+    FULL_NAME           VARCHAR,
+    EMAIL               VARCHAR,
+    PHONE               VARCHAR,
+    COUNTRY_CODE        VARCHAR(2),
+    SEGMENT             VARCHAR,
+    CREATED_AT          TIMESTAMP_NTZ,
+    UPDATED_AT          TIMESTAMP_NTZ,
+    IS_CURRENT          BOOLEAN     DEFAULT TRUE,
+    VALID_FROM          TIMESTAMP_NTZ,
+    VALID_TO            TIMESTAMP_NTZ
+)
+COMMENT='Customer SCD2 dimension'
+;
+
+CREATE OR REPLACE TABLE DIM_MERCHANT (
+    MERCHANT_KEY        NUMBER      AUTOINCREMENT,
+    MERCHANT_ID         VARCHAR     NOT NULL,
+    MERCHANT_NAME       VARCHAR,
+    CATEGORY            VARCHAR,
+    COUNTRY_CODE        VARCHAR(2),
+    ONBOARDED_AT        TIMESTAMP_NTZ,
+    IS_ACTIVE           BOOLEAN
+)
+COMMENT='Merchant dimension'
+;
+
+CREATE OR REPLACE TABLE DIM_PAYMENT_METHOD (
+    PAYMENT_METHOD_KEY  NUMBER      AUTOINCREMENT,
+    PAYMENT_METHOD_ID   VARCHAR     NOT NULL,
+    METHOD_NAME         VARCHAR,  -- e.g. CARD, WALLET, UPI
+    SCHEME              VARCHAR,  -- e.g. VISA, MASTERCARD
+    IS_TOKENIZED        BOOLEAN,
+    CREATED_AT          TIMESTAMP_NTZ
+)
+COMMENT='Payment method dimension'
+;
+
+CREATE OR REPLACE TABLE DIM_DATE (
+    DATE_KEY            NUMBER      NOT NULL, -- yyyymmdd
+    DATE_ACTUAL         DATE        NOT NULL,
+    YEAR                NUMBER(4),
+    QUARTER             NUMBER(1),
+    MONTH               NUMBER(2),
+    DAY                 NUMBER(2),
+    DAY_OF_WEEK         NUMBER(1),
+    WEEK_OF_YEAR        NUMBER(2)
+)
+COMMENT='Date dimension'
+;
+
+-- Fact
+
+CREATE OR REPLACE TABLE FACT_PAYMENT (
+    PAYMENT_KEY         NUMBER      AUTOINCREMENT,
+    PAYMENT_ID          VARCHAR     NOT NULL,
+    CUSTOMER_KEY        NUMBER      REFERENCES DIM_CUSTOMER(CUSTOMER_KEY),
+    MERCHANT_KEY        NUMBER      REFERENCES DIM_MERCHANT(MERCHANT_KEY),
+    PAYMENT_METHOD_KEY  NUMBER      REFERENCES DIM_PAYMENT_METHOD(PAYMENT_METHOD_KEY),
+    DATE_KEY            NUMBER      REFERENCES DIM_DATE(DATE_KEY),
+    AUTHORIZED_AT       TIMESTAMP_NTZ,
+    CAPTURED_AT         TIMESTAMP_NTZ,
+    CURRENCY            VARCHAR(3),
+    AMOUNT_AUTH         NUMBER(18,2),
+    AMOUNT_CAPTURED     NUMBER(18,2),
+    FEES_AMOUNT         NUMBER(18,2),
+    STATUS              VARCHAR,    -- AUTHORIZED, CAPTURED, FAILED, REFUNDED
+    FAILURE_REASON      VARCHAR,
+    IS_REFUND           BOOLEAN     DEFAULT FALSE,
+    REFUND_OF_PAYMENT_ID VARCHAR,
+    CREATED_AT          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+)
+COMMENT='Payment transaction fact table'
+;
+
+-- Optional Snowflake-style clustering for large tables
+ALTER TABLE FACT_PAYMENT CLUSTER BY (DATE_KEY, MERCHANT_KEY);
+
+-- Example of extension to Snowflake schema:
+-- You can normalize DIM_MERCHANT by extracting a DIM_COUNTRY and DIM_CATEGORY
+-- and replacing the denormalized columns with foreign keys.
+

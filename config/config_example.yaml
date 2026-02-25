@@ -1,0 +1,26 @@
+environment: dev
+
+sources:
+  payments_db:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: payments_oltp
+    user: your_user
+    password: your_password
+
+landing_zone:
+  path: data/landing/payments
+
+snowflake:
+  account: your_account.region.cloud
+  user: your_user
+  password: your_password
+  role: ANALYTICS_ROLE
+  warehouse: ANALYTICS_WH
+  database: PAYMENTS_DWH
+  schema: CORE
+
+security:
+  pii_masking: true
+
